@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from "next/server";
+import { yahooFinance } from "@/modules/research/server/providers/yahoo";
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const symbol = searchParams.get("symbol");
+  const period = searchParams.get("period") || "1y"; // 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+
+  if (!symbol) {
+    return NextResponse.json({ error: "Symbol is required" }, { status: 400 });
+  }
+
+  try {
+    const period1 = new Date();
+    const period2 = new Date();
+
+    // Calculate period1 based on requested period
+    switch (period) {
+      case "1d":
+        period1.setDate(period1.getDate() - 1);
+        break;
+      case "5d":
+        period1.setDate(period1.getDate() - 5);
+        break;
+      case "1mo":
+        period1.setMonth(period1.getMonth() - 1);
+        break;
+      case "3mo":
+        period1.setMonth(period1.getMonth() - 3);
+        break;
+      case "6mo":
+        period1.setMonth(period1.getMonth() - 6);
+        break;
+      case "1y":
+        period1.setFullYear(period1.getFullYear() - 1);
+        break;
+      case "2y":
+        period1.setFullYear(period1.getFullYear() - 2);
+        break;
+      case "5y":
+        period1.setFullYear(period1.getFullYear() - 5);
+        break;
+      case "10y":
+        period1.setFullYear(period1.getFullYear() - 10);
+        break;
+      case "ytd":
+        period1.setMonth(0);
+        period1.setDate(1);
+        break;
+      case "max":
+        period1.setFullYear(period1.getFullYear() - 50);
+        break;
+      default:
+        period1.setFullYear(period1.getFullYear() - 1);
+    }
+
+    const result = await yahooFinance.chart(symbol, {
+      period1,
+      period2,
+      interval: "1d",
+    });
+
+    const chartData = result.quotes
+      .filter((quote: any) => quote.close !== null)
+      .map((quote: any) => ({
+        date: quote.date,
+        open: quote.open,
+        high: quote.high,
+        low: quote.low,
+        close: quote.close,
+        volume: quote.volume,
+        adjclose: quote.adjclose,
+      }));
+
+    const meta = {
+      symbol: result.meta.symbol,
+      currency: result.meta.currency,
+      exchangeName: result.meta.exchangeName,
+      instrumentType: result.meta.instrumentType,
+      firstTradeDate: result.meta.firstTradeDate,
+      regularMarketTime: result.meta.regularMarketTime,
+      gmtoffset: result.meta.gmtoffset,
+      timezone: result.meta.timezone,
+      exchangeTimezoneName: result.meta.exchangeTimezoneName,
+      currentTradingPeriod: result.meta.currentTradingPeriod,
+      dataGranularity: result.meta.dataGranularity,
+      range: result.meta.range,
+      validRanges: result.meta.validRanges,
+    };
+
+    return NextResponse.json({
+      meta,
+      chartData,
+    });
+  } catch (error) {
+    console.error("Error fetching stock chart data:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch stock chart data" },
+      { status: 500 }
+    );
+  }
+}

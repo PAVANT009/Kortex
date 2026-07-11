@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { LineChart, LogOut } from "lucide-react";
+import { BarChart3, LogOut } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { cn } from "@/lib/utils";
 
 type DashboardNavbarProps = {
   user: {
@@ -16,8 +17,16 @@ type DashboardNavbarProps = {
   };
 };
 
+const NAV_LINKS = [
+  { href: "/dashboard", label: "Research" },
+  { href: "/dashboard#decision", label: "Verdict" },
+  { href: "/dashboard#sources", label: "Sources" },
+  { href: "/", label: "Public Demo" },
+];
+
 export function DashboardNavbar({ user }: DashboardNavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -38,72 +47,73 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* ── Top bar: logo + user controls ── */}
+        <div className="flex h-14 items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <LineChart className="size-5" />
+            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <BarChart3 className="size-3.5" />
             </div>
             <div>
               <Link
-                className="text-sm font-semibold tracking-[0.2em] uppercase"
+                className="text-sm font-semibold tracking-tight text-foreground"
                 href="/dashboard"
               >
-                AI Finance Agent
+                Meridian
               </Link>
-              <p className="text-sm text-muted-foreground">
-                Secure workspace for authenticated users
+              <p className="text-xs text-muted-foreground leading-none mt-0.5">
+                Investment Research
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
-              href="/dashboard"
-            >
-              Overview
-            </Link>
-            <Link
-              className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
-              href="/dashboard#market-snapshot"
-            >
-              Snapshot
-            </Link>
-            <Link
-              className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
-              href="/dashboard#watchlist"
-            >
-              Watchlist
-            </Link>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{user.name}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right">
+              <p className="text-xs font-medium text-foreground">{user.name}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
             <AnimatedThemeToggler />
             <Button
-              className="gap-2"
+              className="h-8 gap-1.5 text-xs"
               disabled={isPending}
               onClick={handleSignOut}
               variant="outline"
+              size="sm"
             >
-              <LogOut className="size-4" />
-              {isPending ? "Signing out..." : "Sign out"}
+              <LogOut className="size-3" />
+              {isPending ? "Signing out…" : "Sign out"}
             </Button>
           </div>
         </div>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {/* ── Bottom tab navigation ── */}
+        <nav className="flex items-center gap-0 -mb-px">
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "px-4 py-2.5 text-sm border-b-2 transition-colors",
+                  isActive
+                    ? "border-primary text-foreground font-medium"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
+
+      {error ? (
+        <div className="border-t border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive text-center">
+          {error}
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -1,0 +1,82 @@
+import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+
+import { getSession } from "@/lib/get-session";
+import { researchRequestSchema } from "@/modules/research/schemas/input";
+import { researchResponseSchema } from "@/modules/research/schemas/report";
+import {
+  createResearchRun,
+  failResearchRun,
+  getRecentCompletedRuns,
+} from "@/modules/research/server/repository";
+import { runInvestmentResearch } from "@/modules/research/server/run-research";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unable to complete research.";
+}
+
+export async function GET() {
+  try {
+    const session = await getSession();
+    const recentRuns = await getRecentCompletedRuns(
+      8,
+      session?.user.id ?? null,
+    );
+    return NextResponse.json({ recentRuns });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: getErrorMessage(error),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  let runId: string | null = null;
+
+  try {
+    const json = await request.json();
+    const payload = researchRequestSchema.parse(json);
+    const session = await getSession();
+    const run = await createResearchRun(payload.company, session?.user.id ?? null);
+
+    runId = run.id;
+
+    const result = await runInvestmentResearch({
+      companyQuery: payload.company,
+      runId,
+    });
+
+    return NextResponse.json(researchResponseSchema.parse(result));
+  } catch (error) {
+    if (runId) {
+      await failResearchRun(runId, getErrorMessage(error));
+    }
+
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Please enter a valid company name.",
+          issues: error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: getErrorMessage(error),
+      },
+      { status: 500 },
+    );
+  }
+}
