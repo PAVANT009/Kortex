@@ -67,28 +67,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to add to watchlist" }, { status: 500 });
   }
 }
-
-export async function DELETE(request: NextRequest) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const body = await request.json();
-    const { ticker } = body;
-
-    if (!ticker) {
-      return NextResponse.json({ error: "Missing ticker" }, { status: 400 });
-    }
-
-    await db
-      .delete(watchlist)
-      .where(and(eq(watchlist.userId, session.user.id), eq(watchlist.ticker, ticker)));
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error removing from watchlist:", error);
-    return NextResponse.json({ error: "Failed to remove from watchlist" }, { status: 500 });
-  }
-}

@@ -428,39 +428,13 @@ export function AppShell({ children, user }: AppShellProps) {
               >
                 <ChevronLeft className="size-4" />
               </Button>
-            ) : (
-              <Button
-                className="size-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setIsCollapsed(false)}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Edit className="size-4" />
-              </Button>
-            )}
+            ) : null}
           </div>
 
-          <div className="flex-1 overflow-y-auto py-2">
-            {!isCollapsed ? (
-              <div className="mb-4 space-y-0.5 px-3">
-                <Link
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
-                  href="/dashboard"
-                >
-                  <LayoutTemplate className="size-4" />
-                  Explore templates
-                </Link>
-                <Link
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
-                  href="/history"
-                >
-                  <Search className="size-4" />
-                  Search matrices
-                </Link>
-              </div>
-            ) : null}
-
+          <div
+            className="flex-1 overflow-y-auto py-2"
+            onClick={() => isCollapsed && setIsCollapsed(false)}
+          >
             <DesktopNav isCollapsed={isCollapsed} pathname={pathname} />
 
             {!isCollapsed ? (

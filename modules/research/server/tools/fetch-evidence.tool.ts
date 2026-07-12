@@ -159,12 +159,17 @@ export async function fetchEvidence(
         type: "quarterly",
       }),
       yahooFinance.search(resolution.symbol, {
-        newsCount: 6,
+        newsCount: 10,
         quotesCount: 1,
       }),
     ]);
 
-  const normalizedNews = normalizeNews(resolution.symbol, newsSearch.news);
+  // Filter news to only include articles related to the company symbol
+  const companySpecificNews = newsSearch.news.filter((article: any) =>
+    article.relatedTickers?.includes(resolution.symbol)
+  );
+
+  const normalizedNews = normalizeNews(resolution.symbol, companySpecificNews);
   const sources = buildSources(resolution.symbol, normalizedNews);
   const assetProfile = quoteSummary.assetProfile;
   const financialData = quoteSummary.financialData;

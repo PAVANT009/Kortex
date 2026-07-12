@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
     const savedReports = await db
       .select({
         id: savedReport.id,
-        reportId: savedReport.reportId,
         runId: savedReport.runId,
         companyName: savedReport.companyName,
         ticker: savedReport.ticker,
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
         createdAt: researchReport.createdAt,
       })
       .from(savedReport)
-      .leftJoin(researchReport, eq(savedReport.reportId, researchReport.id))
+      .leftJoin(researchReport, eq(savedReport.runId, researchReport.runId))
       .where(eq(savedReport.userId, session.user.id))
       .orderBy(desc(savedReport.savedAt));
 
@@ -44,9 +43,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { reportId, runId, companyName, ticker, decision } = body;
+    const { runId, companyName, ticker, decision } = body;
 
-    if (!reportId || !runId || !companyName || !ticker || !decision) {
+    if (!runId || !companyName || !ticker || !decision) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
     const existing = await db
       .select()
       .from(savedReport)
-      .where(eq(savedReport.reportId, reportId))
+      .where(eq(savedReport.runId, runId))
       .limit(1);
 
     if (existing.length > 0) {
@@ -66,7 +65,6 @@ export async function POST(request: NextRequest) {
       .values({
         id: nanoid(),
         userId: session.user.id,
-        reportId,
         runId,
         companyName,
         ticker,

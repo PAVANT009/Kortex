@@ -71,8 +71,53 @@ export function ResearchWorkspace({
   const [chatRatio, setChatRatio] = useState(DEFAULT_CHAT_RATIO);
   const [isDragging, setIsDragging] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [watchlistItemId, setWatchlistItemId] = useState<string | null>(null);
+  const [searchSuggestions, setSearchSuggestions] = useState<Array<{ symbol: string; name: string; type: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const busy = isSubmitting || isHydrating;
+
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (company.length >= 2) {
+        try {
+          const response = await fetch(`/api/company-search?q=${encodeURIComponent(company)}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Suggestions response:", data);
+            setSearchSuggestions(data.results || []);
+            setShowSuggestions(true);
+            console.log("Show suggestions set to true, results:", data.results);
+          }
+        } catch (err) {
+          console.error("Failed to fetch suggestions:", err);
+        }
+      } else {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [company]);
+
+  function handleSelectSuggestion(suggestion: { symbol: string; name: string }) {
+    setCompany(suggestion.name);
+    setShowSuggestions(false);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('form')) {
+        setShowSuggestions(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   function buildRunHref(runId: string, companyQuery?: string) {
     if (mode === "dashboard") return `/research/${runId}`;
@@ -94,11 +139,11 @@ export function ResearchWorkspace({
     if (!result) return;
 
     try {
+      console.log("Saving report with runId:", result.runId);
       const response = await fetch("/api/saved", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reportId: result.runId,
           runId: result.runId,
           companyName: result.report.companyName,
           ticker: result.report.ticker,
@@ -106,10 +151,18 @@ export function ResearchWorkspace({
         }),
       });
 
+      console.log("Save response status:", response.status);
       if (response.ok) {
+        const data = await response.json();
+        console.log("Save response data:", data);
         setIsSaved(true);
+        setSavedReportId(data.savedReport.id);
       } else if (response.status === 409) {
+        console.log("Report already saved");
         setIsSaved(true);
+      } else {
+        const errorData = await response.json();
+        console.error("Save failed:", errorData);
       }
     } catch (err) {
       console.error("Failed to save report:", err);
@@ -117,17 +170,16 @@ export function ResearchWorkspace({
   }
 
   async function handleUnsaveReport() {
-    if (!result) return;
+    if (!savedReportId) return;
 
     try {
-      const response = await fetch("/api/saved", {
+      const response = await fetch(`/api/saved/${savedReportId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId: result.runId }),
       });
 
       if (response.ok) {
         setIsSaved(false);
+        setSavedReportId(null);
       }
     } catch (err) {
       console.error("Failed to unsave report:", err);
@@ -148,7 +200,9 @@ export function ResearchWorkspace({
       });
 
       if (response.ok) {
+        const data = await response.json();
         setIsInWatchlist(true);
+        setWatchlistItemId(data.watchlistItem.id);
       } else if (response.status === 409) {
         setIsInWatchlist(true);
       }
@@ -158,17 +212,16 @@ export function ResearchWorkspace({
   }
 
   async function handleRemoveFromWatchlist() {
-    if (!result) return;
+    if (!watchlistItemId) return;
 
     try {
-      const response = await fetch("/api/watchlist", {
+      const response = await fetch(`/api/watchlist/${watchlistItemId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker: result.report.ticker }),
       });
 
       if (response.ok) {
         setIsInWatchlist(false);
+        setWatchlistItemId(null);
       }
     } catch (err) {
       console.error("Failed to remove from watchlist:", err);
@@ -200,6 +253,41 @@ export function ResearchWorkspace({
   }, [handleSplitterMove, isDragging]);
 
   useEffect(() => {
+    if (!result) return;
+
+    async function checkSaveStatus() {
+      try {
+        const response = await fetch("/api/saved");
+        if (response.ok) {
+          const data = await response.json();
+          const saved = data.savedReports?.find((r: any) => r.reportId === result.runId);
+          setIsSaved(!!saved);
+          setSavedReportId(saved?.id || null);
+        }
+      } catch (err) {
+        console.error("Failed to check save status:", err);
+      }
+    }
+
+    async function checkWatchlistStatus() {
+      try {
+        const response = await fetch("/api/watchlist");
+        if (response.ok) {
+          const data = await response.json();
+          const inWatchlist = data.watchlist?.find((w: any) => w.ticker === result.report.ticker);
+          setIsInWatchlist(!!inWatchlist);
+          setWatchlistItemId(inWatchlist?.id || null);
+        }
+      } catch (err) {
+        console.error("Failed to check watchlist status:", err);
+      }
+    }
+
+    checkSaveStatus();
+    checkWatchlistStatus();
+  }, [result]);
+
+  useEffect(() => {
     if (!initialRunId) return;
     const runId = initialRunId;
     if (result?.runId === initialRunId) return;
@@ -229,11 +317,13 @@ export function ResearchWorkspace({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    console.log("handleSubmit called, company:", company);
     const trimmedCompany = company.trim();
     if (!trimmedCompany) {
       setError("Enter a company name to start the research run.");
       return;
     }
+    console.log("Submitting research for:", trimmedCompany);
     setError(null);
     setIsSubmitting(true);
     try {
@@ -243,6 +333,7 @@ export function ResearchWorkspace({
         method: "POST",
       });
       const payload = await response.json();
+      console.log("Research response:", response.status);
       if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Unable to complete the research run.");
       const parsed = researchResponseSchema.parse(payload);
       setResult(parsed);
@@ -302,6 +393,7 @@ export function ResearchWorkspace({
                 className="h-8 rounded-md border-border/80 bg-muted/30 pr-24 pl-8 text-sm"
                 id={`${mode}-company`}
                 onChange={(event) => setCompany(event.target.value)}
+                onFocus={() => setShowSuggestions(true)}
                 placeholder={
                   mode === "dashboard"
                     ? "Screen a company..."
@@ -321,6 +413,25 @@ export function ResearchWorkspace({
                   "Analyze"
                 )}
               </Button>
+
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg">
+                  {searchSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.symbol}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelectSuggestion(suggestion);
+                      }}
+                      type="button"
+                    >
+                      <div className="font-medium">{suggestion.name}</div>
+                      <div className="text-xs text-muted-foreground">{suggestion.symbol}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </form>
 

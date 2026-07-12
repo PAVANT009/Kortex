@@ -57,11 +57,22 @@ function buildVerdictResponse(report: InvestmentReport) {
 function buildAgentResponse(prompt: string, report: InvestmentReport) {
   const normalized = prompt.toLowerCase();
 
-  if (normalized.includes("due diligence") || normalized.includes("dd")) {
+  if (
+    normalized.includes("due diligence") ||
+    normalized.includes("dd") ||
+    normalized.includes("question") ||
+    normalized.includes("ask") ||
+    normalized.includes("meeting")
+  ) {
     return buildDdQuestionsResponse(report);
   }
 
-  if (normalized.includes("risk")) {
+  if (
+    normalized.includes("risk") ||
+    normalized.includes("danger") ||
+    normalized.includes("concern") ||
+    normalized.includes("problem")
+  ) {
     return buildRiskSummaryResponse(report);
   }
 
@@ -69,12 +80,41 @@ function buildAgentResponse(prompt: string, report: InvestmentReport) {
     normalized.includes("verdict") ||
     normalized.includes("invest") ||
     normalized.includes("pass") ||
-    normalized.includes("change your mind")
+    normalized.includes("change your mind") ||
+    normalized.includes("decision") ||
+    normalized.includes("recommendation")
   ) {
     return buildVerdictResponse(report);
   }
 
-  return buildDdQuestionsResponse(report);
+  if (
+    normalized.includes("hello") ||
+    normalized.includes("hi") ||
+    normalized.includes("hey")
+  ) {
+    return `Hello! I'm here to help you analyze the research on ${report.companyName}. You can ask me about:\n\n• Key due diligence questions\n• Risks from the evidence\n• The invest/pass verdict and rationale\n\nWhat would you like to know?`;
+  }
+
+  if (
+    normalized.includes("guidance") ||
+    normalized.includes("management") ||
+    normalized.includes("headline") ||
+    normalized.includes("narrative")
+  ) {
+    return `**Management Guidance vs Headline Narrative**\n\nBased on the evidence, here's the comparison:\n\n${report.executiveSummary.text}\n\nThe key factors to consider are the alignment between management's forward-looking statements and the current market sentiment reflected in recent headlines.`;
+  }
+
+  if (
+    normalized.includes("valuation") ||
+    normalized.includes("price") ||
+    normalized.includes("expensive") ||
+    normalized.includes("cheap")
+  ) {
+    return `**Valuation Assessment**\n\n${report.financialAnalysis.text}\n\nThe current valuation should be evaluated relative to peers and expected growth rates. Consider the financial metrics and market positioning outlined in the analysis.`;
+  }
+
+  // Default response for other questions
+  return `I can help you with questions about ${report.companyName}. Here are some things I can do:\n\n• Draft due diligence questions\n• Summarize risks\n• Explain the verdict\n• Discuss valuation\n\nTry asking about one of these topics, or use the preset prompts above.`;
 }
 
 function renderMarkdownish(text: string) {

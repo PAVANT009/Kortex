@@ -70,9 +70,6 @@ export const savedReport = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    reportId: text("report_id")
-      .notNull()
-      .references(() => researchReport.id, { onDelete: "cascade" }),
     runId: text("run_id")
       .notNull()
       .references(() => researchRun.id, { onDelete: "cascade" }),
@@ -82,7 +79,7 @@ export const savedReport = pgTable(
     savedAt: timestamp("saved_at").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("saved_report_user_report_idx").on(table.userId, table.reportId),
+    uniqueIndex("saved_report_user_run_idx").on(table.userId, table.runId),
   ],
 );
 
