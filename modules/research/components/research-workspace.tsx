@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Bookmark,
   CircleAlert,
   LoaderCircle,
   Search,
+  Star,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -68,6 +70,8 @@ export function ResearchWorkspace({
   const [isHydrating, setIsHydrating] = useState(false);
   const [chatRatio, setChatRatio] = useState(DEFAULT_CHAT_RATIO);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
   const busy = isSubmitting || isHydrating;
 
   function buildRunHref(runId: string, companyQuery?: string) {
@@ -85,6 +89,91 @@ export function ResearchWorkspace({
     const ratio = (clientY - rect.top) / rect.height;
     setChatRatio(Math.min(MAX_CHAT_RATIO, Math.max(MIN_CHAT_RATIO, ratio)));
   }, []);
+
+  async function handleSaveReport() {
+    if (!result) return;
+
+    try {
+      const response = await fetch("/api/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: result.runId,
+          runId: result.runId,
+          companyName: result.report.companyName,
+          ticker: result.report.ticker,
+          decision: result.report.decision.verdict,
+        }),
+      });
+
+      if (response.ok) {
+        setIsSaved(true);
+      } else if (response.status === 409) {
+        setIsSaved(true);
+      }
+    } catch (err) {
+      console.error("Failed to save report:", err);
+    }
+  }
+
+  async function handleUnsaveReport() {
+    if (!result) return;
+
+    try {
+      const response = await fetch("/api/saved", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: result.runId }),
+      });
+
+      if (response.ok) {
+        setIsSaved(false);
+      }
+    } catch (err) {
+      console.error("Failed to unsave report:", err);
+    }
+  }
+
+  async function handleAddToWatchlist() {
+    if (!result) return;
+
+    try {
+      const response = await fetch("/api/watchlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: result.report.companyName,
+          ticker: result.report.ticker,
+        }),
+      });
+
+      if (response.ok) {
+        setIsInWatchlist(true);
+      } else if (response.status === 409) {
+        setIsInWatchlist(true);
+      }
+    } catch (err) {
+      console.error("Failed to add to watchlist:", err);
+    }
+  }
+
+  async function handleRemoveFromWatchlist() {
+    if (!result) return;
+
+    try {
+      const response = await fetch("/api/watchlist", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker: result.report.ticker }),
+      });
+
+      if (response.ok) {
+        setIsInWatchlist(false);
+      }
+    } catch (err) {
+      console.error("Failed to remove from watchlist:", err);
+    }
+  }
 
   useEffect(() => {
     if (!isDragging) return;
@@ -245,6 +334,24 @@ export function ResearchWorkspace({
                 confidence={report.decision.confidence}
                 verdict={report.decision.verdict}
               />
+              <div className="flex items-center gap-1 ml-2">
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={isSaved ? handleUnsaveReport : handleSaveReport}
+                  title={isSaved ? "Unsave report" : "Save report"}
+                >
+                  <Bookmark className={cn("size-4", isSaved && "fill-primary text-primary")} />
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={isInWatchlist ? handleRemoveFromWatchlist : handleAddToWatchlist}
+                  title={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+                >
+                  <Star className={cn("size-4", isInWatchlist && "fill-primary text-primary")} />
+                </Button>
+              </div>
             </div>
           ) : (
             <p className="hidden text-xs text-muted-foreground sm:block">

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { cn } from "@/lib/utils";
 import type { RecentResearchRun } from "@/modules/research/server/repository";
 
@@ -565,6 +566,7 @@ export function AppShell({ children, user }: AppShellProps) {
             </div>
 
             <div className="flex items-center gap-2">
+              <AnimatedThemeToggler />
               <UserAccountMenu align="right" compact user={user} />
             </div>
           </header>

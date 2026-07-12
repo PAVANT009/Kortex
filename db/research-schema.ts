@@ -62,3 +62,43 @@ export const researchSource = pgTable("research_source", {
   retrievedAt: timestamp("retrieved_at").defaultNow().notNull(),
   excerpt: text("excerpt"),
 });
+
+export const savedReport = pgTable(
+  "saved_report",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    reportId: text("report_id")
+      .notNull()
+      .references(() => researchReport.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => researchRun.id, { onDelete: "cascade" }),
+    companyName: text("company_name").notNull(),
+    ticker: text("ticker").notNull(),
+    decision: investmentDecisionEnum("decision").notNull(),
+    savedAt: timestamp("saved_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("saved_report_user_report_idx").on(table.userId, table.reportId),
+  ],
+);
+
+export const watchlist = pgTable(
+  "watchlist",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    companyName: text("company_name").notNull(),
+    ticker: text("ticker").notNull(),
+    notes: text("notes"),
+    addedAt: timestamp("added_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("watchlist_user_ticker_idx").on(table.userId, table.ticker),
+  ],
+);

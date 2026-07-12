@@ -12,8 +12,13 @@ The user enters a company name and the app:
 - produces an `INVEST` or `PASS` verdict with rationale
 - cites the sources used in each section
 - saves the run and makes it reloadable from the UI
+- displays an interactive stock chart with historical price data
+- allows saving reports to a personal collection
+- allows tracking companies in a watchlist
+- supports light/dark/system theming
+- provides a settings page for preferences
 
-The public home page works as the demo surface. A Google-only authenticated dashboard reuses the same research workspace for protected access.
+The public home page works as the demo surface. A Google-only authenticated dashboard reuses the same research workspace for protected access with additional features like saved reports and watchlist.
 
 ## How to run it
 
@@ -75,7 +80,7 @@ Open `http://localhost:3000`.
 ### Architecture
 
 - `app/`
-  - route pages for `/`, `/dashboard`, auth pages, and API handlers
+  - route pages for `/`, `/dashboard`, `/saved`, `/watchlist`, `/settings`, auth pages, and API handlers
 - `modules/research/schemas/`
   - Zod contracts for input, evidence, and final report output
 - `modules/research/server/tools/`
@@ -87,9 +92,11 @@ Open `http://localhost:3000`.
 - `modules/research/server/repository.ts`
   - persistence for runs, reports, and source records
 - `modules/research/components/`
-  - reusable research workspace UI
+  - reusable research workspace UI with stock chart integration
+- `components/`
+  - UI components including theme toggler, stock chart, and layout components
 - `db/`
-  - Drizzle client and schema definitions
+  - Drizzle client and schema definitions (including saved_report and watchlist tables)
 - `drizzle/`
   - generated SQL migrations
 
