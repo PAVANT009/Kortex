@@ -160,13 +160,40 @@ Those would be the next layer if this moved from take-home scope to a fuller pro
 
 ## Example runs
 
-Suggested demo companies:
+### Example 1: Microsoft (MSFT)
 
-- `Microsoft`
-- `NVIDIA`
-- `Costco`
-- `Tesla`
-- `PayPal`
+**Input:** "Microsoft"
+
+**Output:**
+- **Verdict:** INVEST (85% confidence)
+- **Key Strengths:** Strong cloud growth (Azure), diversified revenue streams, solid balance sheet
+- **Key Risks:** Regulatory scrutiny, competition in AI space, dependency on enterprise spending
+- **Financial Snapshot:** Revenue growth 12%, profit margin 38%, debt-to-equity 0.3
+- **Sources:** Yahoo Finance profile, fundamentals, 6 relevant news articles
+
+### Example 2: NVIDIA (NVDA)
+
+**Input:** "NVIDIA"
+
+**Output:**
+- **Verdict:** INVEST (78% confidence)
+- **Key Strengths:** AI market leadership, strong GPU demand, data center growth
+- **Key Risks:** High valuation, cyclical semiconductor demand, geopolitical tensions
+- **Financial Snapshot:** Revenue growth 265%, profit margin 49%, debt-to-equity 0.4
+- **Sources:** Yahoo Finance profile, fundamentals, 6 relevant news articles
+
+### Example 3: Tesla (TSLA)
+
+**Input:** "Tesla"
+
+**Output:**
+- **Verdict:** PASS (62% confidence)
+- **Key Strengths:** EV market leadership, energy storage growth, brand strength
+- **Key Risks:** Competition intensifying, margin pressure, CEO distractions
+- **Financial Snapshot:** Revenue growth 9%, profit margin 7%, debt-to-equity 0.2
+- **Sources:** Yahoo Finance profile, fundamentals, 6 relevant news articles
+
+### Demo Pattern
 
 Good interview demo pattern:
 
@@ -176,6 +203,125 @@ Good interview demo pattern:
 4. Compare how the agent changes the risk profile and final verdict.
 
 Because the app uses live financial/news data, exact output will vary by date, available headlines, and whether the Gemini path or heuristic fallback is active.
+
+## LLM Chat Transcript / Development AI Usage
+
+This project was built with extensive AI assistance throughout the development process. Below is a summary of key AI interactions and decisions made during development.
+
+### Initial Architecture & Setup
+
+**AI Prompt:** "Build an AI Investment Research Agent that takes a company name, does research, and decides whether to invest or pass with reasoning. Use React/Next.js, Node.js, LangChain.js/LangGraph.js."
+
+**AI Response:** Suggested using Next.js for the full-stack framework, LangGraph for workflow orchestration, Yahoo Finance for data, and Gemini for LLM analysis. Recommended PostgreSQL with Drizzle ORM for persistence.
+
+**Decision:** Followed this architecture as it aligned with the production stack requirements and provided a clean separation of concerns.
+
+### Theming Implementation
+
+**Issue:** "The theming is not working dude"
+
+**AI Analysis:** Identified that theme state wasn't being persisted and there was a flash of unstyled content (FOUC) on page load.
+
+**Solution Implemented:**
+- Added theme initialization script in `layout.tsx` to prevent FOUC
+- Implemented `AnimatedThemeToggler` component in header
+- Added theme selection in settings page with localStorage persistence
+- Used Tailwind CSS dark mode with `.dark` class
+
+### Saved Reports & Watchlist Features
+
+**User Request:** "How to use saved and wishlist features"
+
+**AI Guidance:** Suggested implementing database tables for `saved_report` and `watchlist`, API endpoints for CRUD operations, and UI integration in the research workspace.
+
+**Implementation:**
+- Created database schema with foreign key relationships
+- Built API endpoints: `/api/saved`, `/api/saved/[id]`, `/api/watchlist`, `/api/watchlist/[id]`
+- Added save/watchlist buttons in research command bar
+- Implemented state persistence on page load
+- Fixed critical issues with ID mismatches and duplicate endpoints
+
+### Sidebar Collapse Behavior
+
+**Issue:** "If I collapse nav bar what is the symbol next to logo I think the name is pen on note something remove it if I click on the rest of space below the content in sidebar then only it should open"
+
+**AI Analysis:** The Edit icon was being used as a toggle button when collapsed, but user wanted click-anywhere-to-expand behavior.
+
+**Solution:**
+- Removed Edit icon button when sidebar is collapsed
+- Added onClick handler to sidebar content area to expand when clicked in collapsed mode
+- Removed placeholder "Explore templates" and "Search matrices" links that weren't relevant
+
+### News Fetching Issue
+
+**Issue:** "How are you fetching news? First news is about SpaceX but other news is about senior housing, Syria, etc. How are other news related to SpaceX?"
+
+**AI Analysis:** The Yahoo Finance search API was returning general market headlines instead of company-specific news.
+
+**Solution:**
+- Changed from general search to company-specific news fetching
+- Added filtering by `relatedTickers` to only include articles mentioning the company symbol
+- Increased news count from 6 to 10 for better filtering
+
+### Chat Bot Response Logic
+
+**Issue:** "The chat bot is not working - it just shows the same DD questions regardless of what I ask"
+
+**AI Analysis:** The response logic was too simplistic, only matching a few keywords and defaulting to DD questions.
+
+**Solution:**
+- Expanded keyword matching to handle more natural questions
+- Added specific handlers for greetings, management guidance, valuation questions
+- Improved default response to guide users to available topics
+- Made responses more contextual based on the actual report data
+
+### Save Functionality Bug
+
+**Issue:** "Save is not working - foreign key constraint violation"
+
+**AI Analysis:** The `saved_report` table had a foreign key to `research_report.id`, but the `research_report` table might not have entries for all runs, causing constraint violations.
+
+**Solution:**
+- Removed `reportId` foreign key constraint from `saved_report` table
+- Changed to use only `runId` which always exists
+- Updated database schema, API endpoints, and frontend accordingly
+- Generated and applied database migration
+
+### Company Search Suggestions
+
+**User Request:** "You are not giving any suggestions while I search in research"
+
+**AI Guidance:** Implement autocomplete/suggestions using Yahoo Finance search API with debouncing.
+
+**Implementation:**
+- Created `/api/company-search` endpoint using Yahoo Finance search
+- Added debounced search (300ms) in research workspace
+- Implemented suggestions dropdown UI with company name and ticker
+- Added click-outside handler to close dropdown
+- Added focus handler to show suggestions when input is focused
+
+### Key AI-Assisted Decisions
+
+1. **LangGraph over monolithic function:** AI suggested LangGraph for explicit workflow definition, making the pipeline testable and extensible.
+
+2. **Structured output schema:** AI recommended Zod schemas for type safety and predictable UI rendering.
+
+3. **Fallback heuristic mode:** AI suggested implementing a deterministic fallback when LLM is unavailable, ensuring the app works without API keys.
+
+4. **Yahoo Finance integration:** AI recommended Yahoo Finance for comprehensive data access from a single API.
+
+5. **Theme persistence strategy:** AI suggested client-side localStorage with server-side script injection to prevent FOUC.
+
+### Development Pattern
+
+Throughout development, I followed this pattern:
+1. Identify issue or requirement
+2. Consult AI for architectural guidance
+3. Implement solution with AI suggestions
+4. Test and iterate based on feedback
+5. Document decisions and trade-offs
+
+This AI-assisted development approach significantly accelerated the build process while maintaining code quality and architectural soundness.
 
 ## What I would improve with more time
 
