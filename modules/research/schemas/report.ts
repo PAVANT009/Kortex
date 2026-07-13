@@ -28,7 +28,7 @@ export const investmentReportBodySchema = z.object({
   financialAnalysis: citedTextBlockSchema,
   newsSummary: citedTextBlockSchema,
   strengths: z.array(citedInsightSchema).min(2).max(5),
-  weaknesses: z.array(citedInsightSchema).min(2).max(5),
+  weaknesses: z.array(citedInsightSchema).min(1).max(5),
   risks: z.array(citedRiskSchema).min(3).max(6),
   bullCase: z.array(citedInsightSchema).min(2).max(4),
   bearCase: z.array(citedInsightSchema).min(2).max(4),
