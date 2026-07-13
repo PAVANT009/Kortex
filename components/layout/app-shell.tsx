@@ -386,8 +386,8 @@ export function AppShell({ children, user }: AppShellProps) {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex min-h-screen">
+    <div className="h-dvh bg-background">
+      <div className="flex h-full min-h-0">
         <aside
           className={cn(
             "hidden border-r border-border bg-sidebar lg:flex lg:flex-col",
@@ -522,7 +522,7 @@ export function AppShell({ children, user }: AppShellProps) {
           </div>
         ) : null}
 
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
             <Button
               className="lg:hidden"
@@ -546,7 +546,7 @@ export function AppShell({ children, user }: AppShellProps) {
 
           <main
             className={cn(
-              "flex-1 bg-background/50",
+              "min-h-0 flex-1 bg-background/50",
               isResearchWorkspace ? "overflow-hidden p-0" : "overflow-auto p-4 sm:p-6",
             )}
           >

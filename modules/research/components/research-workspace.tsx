@@ -103,11 +103,18 @@ export function ResearchWorkspace({
     CompanySuggestion[]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] =
+    useState<CompanySuggestion | null>(null);
   const busy = isSubmitting || isHydrating;
 
   useEffect(() => {
     const trimmedCompany = company.trim();
-    if (trimmedCompany.length < 2) {
+    if (
+      trimmedCompany.length < 2 ||
+      selectedSuggestion?.name.trim() === trimmedCompany
+    ) {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
@@ -145,10 +152,11 @@ export function ResearchWorkspace({
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, [company]);
+  }, [company, selectedSuggestion]);
 
   function handleCompanyChange(value: string) {
     setCompany(value);
+    setSelectedSuggestion(null);
     if (value.trim().length < 2) {
       setSearchSuggestions([]);
       setShowSuggestions(false);
@@ -157,6 +165,8 @@ export function ResearchWorkspace({
 
   function handleSelectSuggestion(suggestion: CompanySuggestion) {
     setCompany(suggestion.name);
+    setSelectedSuggestion(suggestion);
+    setSearchSuggestions([]);
     setShowSuggestions(false);
   }
 
@@ -363,7 +373,6 @@ export function ResearchWorkspace({
 
   useEffect(() => {
     if (!initialRunId) return;
-    if (result?.runId === initialRunId) return;
 
     const runId = initialRunId;
     let cancelled = false;
@@ -410,7 +419,7 @@ export function ResearchWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [initialRunId, result?.runId]);
+  }, [initialRunId]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -423,10 +432,13 @@ export function ResearchWorkspace({
 
     setError(null);
     setIsSubmitting(true);
+    setResult(null);
 
     try {
       const response = await fetch("/api/research", {
-        body: JSON.stringify({ company: trimmedCompany }),
+        body: JSON.stringify({
+          company: selectedSuggestion?.symbol ?? trimmedCompany,
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
@@ -479,9 +491,9 @@ export function ResearchWorkspace({
   return (
     <div
       className={cn(
-        "flex flex-col",
+        "flex min-h-0 flex-col",
         mode === "dashboard"
-          ? "h-[calc(100vh-3.5rem)]"
+          ? "h-full"
           : "min-h-[calc(100vh-8rem)]",
       )}
     >
@@ -515,7 +527,9 @@ export function ResearchWorkspace({
                 id={`${mode}-company`}
                 onChange={(event) => handleCompanyChange(event.target.value)}
                 onFocus={() =>
-                  setShowSuggestions(searchSuggestions.length > 0)
+                  setShowSuggestions(
+                    !selectedSuggestion && searchSuggestions.length > 0,
+                  )
                 }
                 placeholder={
                   mode === "dashboard"
