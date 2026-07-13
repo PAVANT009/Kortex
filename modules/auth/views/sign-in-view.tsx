@@ -4,9 +4,9 @@ import { useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 
-import { authClient } from "@/lib/auth-client";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 export const SignInView = () => {
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +29,7 @@ export const SignInView = () => {
 
   return (
     <div className="flex min-h-screen w-full bg-background bg-dot-grid">
-      {/* ── Left panel: branding ── */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between border-r border-border/60 bg-card p-12">
+      <div className="hidden flex-col justify-between border-r border-border/60 bg-card p-12 lg:flex lg:w-1/2">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <BarChart3 className="size-4" />
@@ -41,10 +40,10 @@ export const SignInView = () => {
         <div>
           <blockquote className="space-y-3">
             <p className="text-lg font-medium leading-8 text-foreground">
-              "An investment in knowledge pays the best interest."
+              &ldquo;An investment in knowledge pays the best interest.&rdquo;
             </p>
             <footer className="text-sm text-muted-foreground">
-              — Benjamin Franklin
+              - Benjamin Franklin
             </footer>
           </blockquote>
         </div>
@@ -57,28 +56,32 @@ export const SignInView = () => {
           </div>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-base font-semibold tabular-nums text-foreground">10k+</p>
+              <p className="text-base font-semibold tabular-nums text-foreground">
+                10k+
+              </p>
               <p>Public Equities</p>
             </div>
             <div>
-              <p className="text-base font-semibold tabular-nums text-foreground">Real-time</p>
+              <p className="text-base font-semibold tabular-nums text-foreground">
+                Real-time
+              </p>
               <p>Market Data</p>
             </div>
             <div>
-              <p className="text-base font-semibold tabular-nums text-foreground">AI-Cited</p>
+              <p className="text-base font-semibold tabular-nums text-foreground">
+                AI-Cited
+              </p>
               <p>Reports</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Right panel: sign-in form ── */}
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
         <div className="absolute right-4 top-4">
           <AnimatedThemeToggler />
         </div>
 
-        {/* Mobile logo */}
         <div className="mb-8 flex items-center gap-3 lg:hidden">
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <BarChart3 className="size-4" />
@@ -91,20 +94,21 @@ export const SignInView = () => {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Sign in to your workspace
             </h1>
-            <p className="text-sm text-muted-foreground leading-6">
-              Continue with your Google account. A workspace is created automatically on first sign-in.
+            <p className="text-sm leading-6 text-muted-foreground">
+              Continue with your Google account. A workspace is created
+              automatically on first sign-in.
             </p>
           </div>
 
           <div className="space-y-3">
             <Button
-              className="w-full gap-2.5 h-10"
+              className="h-10 w-full gap-2.5"
               disabled={loading}
               onClick={handleGoogleSignIn}
               type="button"
             >
               <FaGoogle className="size-3.5" />
-              {loading ? "Redirecting to Google…" : "Continue with Google"}
+              {loading ? "Redirecting to Google..." : "Continue with Google"}
             </Button>
 
             {error ? (

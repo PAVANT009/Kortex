@@ -18,7 +18,7 @@ The user enters a company name and the app:
 - supports light/dark/system theming
 - provides a settings page for preferences
 
-The public home page works as the demo surface. A Google-only authenticated dashboard reuses the same research workspace for protected access with additional features like saved reports and watchlist.
+The app is currently Google-authenticated end to end. Signed-in users land in the dashboard workspace, where they can run research, save reports, and manage a watchlist.
 
 ## How to run it
 
@@ -44,7 +44,7 @@ Notes:
 
 - If `GEMINI_API_KEY` is missing, the app still works by using a deterministic heuristic fallback for the final report.
 - `GOOGLE_API_KEY` is also supported as an alias because the LangChain Gemini package uses that naming in its own docs.
-- Authentication is Google-only. There is no email/password login flow.
+- Authentication is Google-only. There is no email/password or GitHub login flow.
 
 ### 3. Run database migrations
 
@@ -123,9 +123,9 @@ The fallback exists so the assignment still works without blocking on model acce
 
 ## Key decisions & trade-offs
 
-### 1. Public demo first, authenticated dashboard second
+### 1. Authenticated workspace first
 
-The home page is the main demo surface because interview reviewers should be able to test the core agent immediately. Authentication still exists, but it is not allowed to become a blocker for seeing the product.
+The current build is intentionally locked behind Google sign-in so saved reports, watchlists, and research history stay user-scoped. That keeps the behavior consistent with the protected dashboard experience.
 
 ### 2. Google-only auth
 

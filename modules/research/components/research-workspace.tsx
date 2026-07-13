@@ -14,7 +14,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { researchResponseSchema, type ResearchResponse } from "@/modules/research/schemas/report";
+import {
+  researchResponseSchema,
+  type ResearchResponse,
+} from "@/modules/research/schemas/report";
 import type { RecentResearchRun } from "@/modules/research/server/repository";
 import { ResearchChat } from "./research-chat";
 import { ResearchMatrix } from "./research-matrix";
@@ -27,6 +30,22 @@ type ResearchWorkspaceProps = {
   viewerName?: string | null;
 };
 
+type CompanySuggestion = {
+  symbol: string;
+  name: string;
+  type: string;
+};
+
+type SavedReportStatus = {
+  id: string;
+  runId: string;
+};
+
+type WatchlistStatus = {
+  id: string;
+  ticker: string;
+};
+
 const QUICK_QUERIES = ["Microsoft", "NVIDIA", "Costco", "Tesla"];
 const DEFAULT_CHAT_RATIO = 0.42;
 const MIN_CHAT_RATIO = 0.2;
@@ -37,7 +56,13 @@ function getErrorMessage(error: unknown) {
   return "Something went wrong while generating the report.";
 }
 
-function VerdictPill({ verdict, confidence }: { verdict: string; confidence: number }) {
+function VerdictPill({
+  verdict,
+  confidence,
+}: {
+  verdict: string;
+  confidence: number;
+}) {
   const isInvest = verdict === "INVEST";
   return (
     <span
@@ -48,7 +73,7 @@ function VerdictPill({ verdict, confidence }: { verdict: string; confidence: num
           : "bg-rose-500/10 text-rose-700",
       )}
     >
-      {verdict} · {confidence}%
+      {verdict} | {confidence}%
     </span>
   );
 }
@@ -74,35 +99,63 @@ export function ResearchWorkspace({
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [watchlistItemId, setWatchlistItemId] = useState<string | null>(null);
-  const [searchSuggestions, setSearchSuggestions] = useState<Array<{ symbol: string; name: string; type: string }>>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<
+    CompanySuggestion[]
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const busy = isSubmitting || isHydrating;
 
   useEffect(() => {
+    const trimmedCompany = company.trim();
+    if (trimmedCompany.length < 2) {
+      return;
+    }
+
+    const controller = new AbortController();
     const timeoutId = setTimeout(async () => {
-      if (company.length >= 2) {
-        try {
-          const response = await fetch(`/api/company-search?q=${encodeURIComponent(company)}`);
-          if (response.ok) {
-            const data = await response.json();
-            console.log("Suggestions response:", data);
-            setSearchSuggestions(data.results || []);
-            setShowSuggestions(true);
-            console.log("Show suggestions set to true, results:", data.results);
-          }
-        } catch (err) {
-          console.error("Failed to fetch suggestions:", err);
+      try {
+        const response = await fetch(
+          `/api/company-search?q=${encodeURIComponent(trimmedCompany)}`,
+          { signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          return;
         }
-      } else {
-        setSearchSuggestions([]);
-        setShowSuggestions(false);
+
+        const data = (await response.json()) as {
+          results?: CompanySuggestion[];
+        };
+        const suggestions = data.results ?? [];
+        setSearchSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } catch (fetchError) {
+        if (
+          fetchError instanceof Error &&
+          fetchError.name === "AbortError"
+        ) {
+          return;
+        }
+
+        console.error("Failed to fetch suggestions:", fetchError);
       }
     }, 300);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, [company]);
 
-  function handleSelectSuggestion(suggestion: { symbol: string; name: string }) {
+  function handleCompanyChange(value: string) {
+    setCompany(value);
+    if (value.trim().length < 2) {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }
+
+  function handleSelectSuggestion(suggestion: CompanySuggestion) {
     setCompany(suggestion.name);
     setShowSuggestions(false);
   }
@@ -110,13 +163,13 @@ export function ResearchWorkspace({
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as HTMLElement;
-      if (!target.closest('form')) {
+      if (!target.closest("form")) {
         setShowSuggestions(false);
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   function buildRunHref(runId: string, companyQuery?: string) {
@@ -139,33 +192,25 @@ export function ResearchWorkspace({
     if (!result) return;
 
     try {
-      console.log("Saving report with runId:", result.runId);
       const response = await fetch("/api/saved", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          runId: result.runId,
-          companyName: result.report.companyName,
-          ticker: result.report.ticker,
-          decision: result.report.decision.verdict,
-        }),
+        body: JSON.stringify({ runId: result.runId }),
       });
 
-      console.log("Save response status:", response.status);
       if (response.ok) {
-        const data = await response.json();
-        console.log("Save response data:", data);
+        const data = (await response.json()) as {
+          savedReport: SavedReportStatus;
+        };
         setIsSaved(true);
         setSavedReportId(data.savedReport.id);
-      } else if (response.status === 409) {
-        console.log("Report already saved");
-        setIsSaved(true);
-      } else {
-        const errorData = await response.json();
-        console.error("Save failed:", errorData);
+        return;
       }
-    } catch (err) {
-      console.error("Failed to save report:", err);
+
+      const payload = await response.json();
+      console.error("Save failed:", payload);
+    } catch (saveError) {
+      console.error("Failed to save report:", saveError);
     }
   }
 
@@ -181,8 +226,8 @@ export function ResearchWorkspace({
         setIsSaved(false);
         setSavedReportId(null);
       }
-    } catch (err) {
-      console.error("Failed to unsave report:", err);
+    } catch (removeError) {
+      console.error("Failed to unsave report:", removeError);
     }
   }
 
@@ -200,14 +245,18 @@ export function ResearchWorkspace({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as {
+          watchlistItem: WatchlistStatus;
+        };
         setIsInWatchlist(true);
         setWatchlistItemId(data.watchlistItem.id);
-      } else if (response.status === 409) {
-        setIsInWatchlist(true);
+        return;
       }
-    } catch (err) {
-      console.error("Failed to add to watchlist:", err);
+
+      const payload = await response.json();
+      console.error("Watchlist save failed:", payload);
+    } catch (watchlistError) {
+      console.error("Failed to add to watchlist:", watchlistError);
     }
   }
 
@@ -223,8 +272,8 @@ export function ResearchWorkspace({
         setIsInWatchlist(false);
         setWatchlistItemId(null);
       }
-    } catch (err) {
-      console.error("Failed to remove from watchlist:", err);
+    } catch (removeError) {
+      console.error("Failed to remove from watchlist:", removeError);
     }
   }
 
@@ -255,77 +304,126 @@ export function ResearchWorkspace({
   useEffect(() => {
     if (!result) return;
 
+    const currentRunId = result.runId;
+    const currentTicker = result.report.ticker;
+    let cancelled = false;
+
     async function checkSaveStatus() {
       try {
         const response = await fetch("/api/saved");
-        if (response.ok) {
-          const data = await response.json();
-          const saved = data.savedReports?.find((r: any) => r.reportId === result.runId);
-          setIsSaved(!!saved);
-          setSavedReportId(saved?.id || null);
+        if (!response.ok) {
+          return;
         }
-      } catch (err) {
-        console.error("Failed to check save status:", err);
+
+        const data = (await response.json()) as {
+          savedReports?: SavedReportStatus[];
+        };
+        const saved = data.savedReports?.find(
+          (item) => item.runId === currentRunId,
+        );
+
+        if (!cancelled) {
+          setIsSaved(Boolean(saved));
+          setSavedReportId(saved?.id ?? null);
+        }
+      } catch (statusError) {
+        console.error("Failed to check save status:", statusError);
       }
     }
 
     async function checkWatchlistStatus() {
       try {
         const response = await fetch("/api/watchlist");
-        if (response.ok) {
-          const data = await response.json();
-          const inWatchlist = data.watchlist?.find((w: any) => w.ticker === result.report.ticker);
-          setIsInWatchlist(!!inWatchlist);
-          setWatchlistItemId(inWatchlist?.id || null);
+        if (!response.ok) {
+          return;
         }
-      } catch (err) {
-        console.error("Failed to check watchlist status:", err);
+
+        const data = (await response.json()) as {
+          watchlist?: WatchlistStatus[];
+        };
+        const watchlistItem = data.watchlist?.find(
+          (item) => item.ticker === currentTicker,
+        );
+
+        if (!cancelled) {
+          setIsInWatchlist(Boolean(watchlistItem));
+          setWatchlistItemId(watchlistItem?.id ?? null);
+        }
+      } catch (statusError) {
+        console.error("Failed to check watchlist status:", statusError);
       }
     }
 
-    checkSaveStatus();
-    checkWatchlistStatus();
+    void Promise.all([checkSaveStatus(), checkWatchlistStatus()]);
+
+    return () => {
+      cancelled = true;
+    };
   }, [result]);
 
   useEffect(() => {
     if (!initialRunId) return;
-    const runId = initialRunId;
     if (result?.runId === initialRunId) return;
+
+    const runId = initialRunId;
     let cancelled = false;
 
     async function loadSavedRun() {
       setIsHydrating(true);
       setError(null);
+
       try {
-        const response = await fetch(`/api/research/${encodeURIComponent(runId)}`, { cache: "no-store" });
+        const response = await fetch(
+          `/api/research/${encodeURIComponent(runId)}`,
+          { cache: "no-store" },
+        );
         const payload = await response.json();
-        if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Unable to load the saved report.");
+        if (!response.ok) {
+          throw new Error(
+            typeof payload?.error === "string"
+              ? payload.error
+              : "Unable to load the saved report.",
+          );
+        }
+
         const parsed = researchResponseSchema.parse(payload);
         if (!cancelled) {
+          setIsSaved(false);
+          setSavedReportId(null);
+          setIsInWatchlist(false);
+          setWatchlistItemId(null);
           setCompany((current) => current || parsed.report.companyName);
           setResult(parsed);
         }
       } catch (loadError) {
-        if (!cancelled) setError(getErrorMessage(loadError));
+        if (!cancelled) {
+          setError(getErrorMessage(loadError));
+        }
       } finally {
-        if (!cancelled) setIsHydrating(false);
+        if (!cancelled) {
+          setIsHydrating(false);
+        }
       }
     }
+
     void loadSavedRun();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [initialRunId, result?.runId]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    console.log("handleSubmit called, company:", company);
+
     const trimmedCompany = company.trim();
     if (!trimmedCompany) {
       setError("Enter a company name to start the research run.");
       return;
     }
-    console.log("Submitting research for:", trimmedCompany);
+
     setError(null);
     setIsSubmitting(true);
+
     try {
       const response = await fetch("/api/research", {
         body: JSON.stringify({ company: trimmedCompany }),
@@ -333,9 +431,19 @@ export function ResearchWorkspace({
         method: "POST",
       });
       const payload = await response.json();
-      console.log("Research response:", response.status);
-      if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Unable to complete the research run.");
+      if (!response.ok) {
+        throw new Error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : "Unable to complete the research run.",
+        );
+      }
+
       const parsed = researchResponseSchema.parse(payload);
+      setIsSaved(false);
+      setSavedReportId(null);
+      setIsInWatchlist(false);
+      setWatchlistItemId(null);
       setResult(parsed);
       setRecentRuns((current) => {
         const next = [
@@ -351,7 +459,9 @@ export function ResearchWorkspace({
         ];
         return next.slice(0, 8);
       });
-      router.replace(buildRunHref(parsed.runId, trimmedCompany), { scroll: false });
+      router.replace(buildRunHref(parsed.runId, trimmedCompany), {
+        scroll: false,
+      });
     } catch (submitError) {
       setError(getErrorMessage(submitError));
     } finally {
@@ -362,6 +472,9 @@ export function ResearchWorkspace({
   const report = result?.report ?? null;
   const evidence = result?.evidence ?? null;
   const hasMatrix = Boolean(report && evidence);
+  const chatKey = report
+    ? `${report.companyName}-${report.generatedAt}`
+    : "no-report";
 
   return (
     <div
@@ -372,7 +485,6 @@ export function ResearchWorkspace({
           : "min-h-[calc(100vh-8rem)]",
       )}
     >
-      {/* Compact command bar */}
       <div className="shrink-0 border-b border-border bg-background px-4 py-2.5 sm:px-5">
         {report ? (
           <div className="mb-3 flex items-center justify-between">
@@ -380,20 +492,31 @@ export function ResearchWorkspace({
               {report.companyName}
             </h1>
             <span className="text-xs text-muted-foreground">
-              Saved at {new Date(report.generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+              Generated at{" "}
+              {new Date(report.generatedAt).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })}
             </span>
           </div>
         ) : null}
+
         <div className="flex flex-wrap items-center gap-3">
-          <form className="flex min-w-0 flex-1 items-center gap-2" onSubmit={handleSubmit}>
+          <form
+            className="flex min-w-0 flex-1 items-center gap-2"
+            onSubmit={handleSubmit}
+          >
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 autoComplete="off"
                 className="h-8 rounded-md border-border/80 bg-muted/30 pr-24 pl-8 text-sm"
                 id={`${mode}-company`}
-                onChange={(event) => setCompany(event.target.value)}
-                onFocus={() => setShowSuggestions(true)}
+                onChange={(event) => handleCompanyChange(event.target.value)}
+                onFocus={() =>
+                  setShowSuggestions(searchSuggestions.length > 0)
+                }
                 placeholder={
                   mode === "dashboard"
                     ? "Screen a company..."
@@ -414,24 +537,26 @@ export function ResearchWorkspace({
                 )}
               </Button>
 
-              {showSuggestions && searchSuggestions.length > 0 && (
+              {showSuggestions && searchSuggestions.length > 0 ? (
                 <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg">
                   {searchSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.symbol}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
-                      onClick={(e) => {
-                        e.preventDefault();
+                      className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                      onClick={(clickEvent) => {
+                        clickEvent.preventDefault();
                         handleSelectSuggestion(suggestion);
                       }}
                       type="button"
                     >
                       <div className="font-medium">{suggestion.name}</div>
-                      <div className="text-xs text-muted-foreground">{suggestion.symbol}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {suggestion.symbol}
+                      </div>
                     </button>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
           </form>
 
@@ -445,22 +570,40 @@ export function ResearchWorkspace({
                 confidence={report.decision.confidence}
                 verdict={report.decision.verdict}
               />
-              <div className="flex items-center gap-1 ml-2">
+              <div className="ml-2 flex items-center gap-1">
                 <Button
                   size="icon-sm"
                   variant="ghost"
                   onClick={isSaved ? handleUnsaveReport : handleSaveReport}
                   title={isSaved ? "Unsave report" : "Save report"}
                 >
-                  <Bookmark className={cn("size-4", isSaved && "fill-primary text-primary")} />
+                  <Bookmark
+                    className={cn(
+                      "size-4",
+                      isSaved && "fill-primary text-primary",
+                    )}
+                  />
                 </Button>
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  onClick={isInWatchlist ? handleRemoveFromWatchlist : handleAddToWatchlist}
-                  title={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+                  onClick={
+                    isInWatchlist
+                      ? handleRemoveFromWatchlist
+                      : handleAddToWatchlist
+                  }
+                  title={
+                    isInWatchlist
+                      ? "Remove from watchlist"
+                      : "Add to watchlist"
+                  }
                 >
-                  <Star className={cn("size-4", isInWatchlist && "fill-primary text-primary")} />
+                  <Star
+                    className={cn(
+                      "size-4",
+                      isInWatchlist && "fill-primary text-primary",
+                    )}
+                  />
                 </Button>
               </div>
             </div>
@@ -496,7 +639,7 @@ export function ResearchWorkspace({
               <button
                 key={query}
                 className="rounded border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground transition hover:border-foreground/20 hover:text-foreground"
-                onClick={() => setCompany(query)}
+                onClick={() => handleCompanyChange(query)}
                 type="button"
               >
                 {query}
@@ -513,13 +656,13 @@ export function ResearchWorkspace({
         ) : null}
       </div>
 
-      {/* Split workspace: chat (top) + matrix (bottom) */}
       <div className="flex min-h-0 flex-1 flex-col" ref={splitRef}>
         <div
           className="flex min-h-0 flex-col overflow-hidden"
           style={{ flex: `${chatRatio} 1 0%` }}
         >
           <ResearchChat
+            key={chatKey}
             companyName={report?.companyName}
             report={report}
             variant="pane"
@@ -543,7 +686,11 @@ export function ResearchWorkspace({
           style={{ flex: `${1 - chatRatio} 1 0%` }}
         >
           {hasMatrix ? (
-            <ResearchMatrix evidence={evidence!} report={report!} variant="pane" />
+            <ResearchMatrix
+              evidence={evidence!}
+              report={report!}
+              variant="pane"
+            />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center bg-muted/10 text-center text-muted-foreground">
               <p className="text-sm font-medium">Research matrix</p>

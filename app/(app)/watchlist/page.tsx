@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Star, Trash2, Plus, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Search, Star, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 type WatchlistItem = {
   id: string;
@@ -32,14 +31,14 @@ export default function WatchlistPage() {
         if (!response.ok) throw new Error("Failed to fetch watchlist");
         const data = await response.json();
         setWatchlist(data.watchlist || []);
-      } catch (err) {
+      } catch {
         setError("Failed to load watchlist");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchWatchlist();
+    void fetchWatchlist();
   }, []);
 
   async function handleAddToWatchlist() {
@@ -61,14 +60,23 @@ export default function WatchlistPage() {
         throw new Error(data.error || "Failed to add to watchlist");
       }
 
-      const data = await response.json();
-      setWatchlist((prev) => [...prev, data.watchlistItem]);
+      const data = (await response.json()) as { watchlistItem: WatchlistItem };
+      setWatchlist((previous) => {
+        const withoutDuplicate = previous.filter(
+          (item) => item.id !== data.watchlistItem.id,
+        );
+        return [data.watchlistItem, ...withoutDuplicate];
+      });
       setNewTicker("");
       setNewCompanyName("");
       setNewNotes("");
       setShowAddForm(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add to watchlist");
+    } catch (watchlistError) {
+      setError(
+        watchlistError instanceof Error
+          ? watchlistError.message
+          : "Failed to add to watchlist",
+      );
     }
   }
 
@@ -76,15 +84,15 @@ export default function WatchlistPage() {
     try {
       const response = await fetch(`/api/watchlist/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Failed to remove from watchlist");
-      setWatchlist((prev) => prev.filter((item) => item.id !== id));
-    } catch (err) {
+      setWatchlist((previous) => previous.filter((item) => item.id !== id));
+    } catch {
       setError("Failed to remove from watchlist");
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <p className="text-muted-foreground">Loading watchlist...</p>
       </div>
     );
@@ -92,7 +100,7 @@ export default function WatchlistPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -104,62 +112,78 @@ export default function WatchlistPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Watchlist</h1>
           <p className="text-muted-foreground">
-            {watchlist.length} {watchlist.length === 1 ? "company" : "companies"} tracked
+            {watchlist.length}{" "}
+            {watchlist.length === 1 ? "company" : "companies"} tracked
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(!showAddForm)}>
-          <Plus className="size-4 mr-2" />
+        <Button onClick={() => setShowAddForm((current) => !current)}>
+          <Plus className="mr-2 size-4" />
           Add Company
         </Button>
       </div>
 
-      {showAddForm && (
+      {showAddForm ? (
         <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">Add Company to Watchlist</h3>
+          <h3 className="mb-4 text-lg font-semibold">
+            Add Company to Watchlist
+          </h3>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Company Name</label>
+              <label className="mb-2 block text-sm font-medium">
+                Company Name
+              </label>
               <Input
                 placeholder="e.g., Apple Inc."
                 value={newCompanyName}
-                onChange={(e) => setNewCompanyName(e.target.value)}
+                onChange={(event) => setNewCompanyName(event.target.value)}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Ticker Symbol</label>
+              <label className="mb-2 block text-sm font-medium">
+                Ticker Symbol
+              </label>
               <Input
                 placeholder="e.g., AAPL"
                 value={newTicker}
-                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                onChange={(event) =>
+                  setNewTicker(event.target.value.toUpperCase())
+                }
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Notes (optional)</label>
+              <label className="mb-2 block text-sm font-medium">
+                Notes (optional)
+              </label>
               <Input
                 placeholder="Add any notes about this company"
                 value={newNotes}
-                onChange={(e) => setNewNotes(e.target.value)}
+                onChange={(event) => setNewNotes(event.target.value)}
               />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleAddToWatchlist}>Add to Watchlist</Button>
-              <Button variant="outline" onClick={() => setShowAddForm(false)}>
+              <Button onClick={() => void handleAddToWatchlist()}>
+                Add to Watchlist
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddForm(false)}
+              >
                 Cancel
               </Button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {watchlist.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <Star className="size-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Watchlist is empty</h3>
-          <p className="text-muted-foreground mb-4">
+        <div className="flex h-64 flex-col items-center justify-center text-center">
+          <Star className="mb-4 size-12 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-semibold">Watchlist is empty</h3>
+          <p className="mb-4 text-muted-foreground">
             Add companies to your watchlist to track them
           </p>
           <Button onClick={() => setShowAddForm(true)}>
-            <Plus className="size-4 mr-2" />
+            <Plus className="mr-2 size-4" />
             Add Company
           </Button>
         </div>
@@ -172,40 +196,42 @@ export default function WatchlistPage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="mb-2 flex items-center gap-3">
                     <Link
-                      className="text-lg font-semibold hover:text-primary transition-colors"
+                      className="text-lg font-semibold transition-colors hover:text-primary"
                       href={`/research?company=${item.ticker}`}
                     >
                       {item.companyName}
                     </Link>
-                    <span className="text-sm text-muted-foreground">({item.ticker})</span>
+                    <span className="text-sm text-muted-foreground">
+                      ({item.ticker})
+                    </span>
                   </div>
 
-                  {item.notes && (
-                    <p className="text-sm text-muted-foreground mb-3">{item.notes}</p>
-                  )}
+                  {item.notes ? (
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      {item.notes}
+                    </p>
+                  ) : null}
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>Added {new Date(item.addedAt).toLocaleDateString()}</span>
+                    <span>
+                      Added {new Date(item.addedAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="outline"
-                  >
+                  <Button asChild size="sm" variant="outline">
                     <Link href={`/research?company=${item.ticker}`}>
-                      <Search className="size-4 mr-2" />
+                      <Search className="mr-2 size-4" />
                       Research
                     </Link>
                   </Button>
                   <Button
                     size="icon-sm"
                     variant="ghost"
-                    onClick={() => handleRemoveFromWatchlist(item.id)}
+                    onClick={() => void handleRemoveFromWatchlist(item.id)}
                   >
                     <Trash2 className="size-4 text-destructive" />
                   </Button>

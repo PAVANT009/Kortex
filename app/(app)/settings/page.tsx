@@ -1,28 +1,32 @@
 "use client";
 
 import { Palette, ShieldCheck, SlidersHorizontal, Moon, Sun, Monitor } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type Theme = "light" | "dark" | "system";
 
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") {
+    return "system";
+  }
+
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "system") {
+    return savedTheme;
+  }
+
+  return "system";
+}
+
 export default function SettingsPage() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [riskTolerance, setRiskTolerance] = useState("moderate");
   const [investmentHorizon, setInvestmentHorizon] = useState("medium");
   const [marketFocus, setMarketFocus] = useState("us");
   const [aiDetailLevel, setAiDetailLevel] = useState("balanced");
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-      setTheme("system");
-    }
-  }, []);
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);

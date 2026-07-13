@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 
+import { getSession } from "@/lib/get-session";
+
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  redirect("/dashboard");
+  const session = await getSession();
+  redirect(session ? "/dashboard" : "/sign-in");
 }

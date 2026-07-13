@@ -63,36 +63,8 @@ const authEnvSchema = z
       .trim()
       .min(32, "Must be at least 32 characters long."),
     BETTER_AUTH_URL: httpUrlSchema,
-    GITHUB_CLIENT_ID: emptyStringToUndefined,
-    GITHUB_CLIENT_SECRET: emptyStringToUndefined,
     GOOGLE_CLIENT_ID: z.string().trim().min(1, "Is required."),
     GOOGLE_CLIENT_SECRET: z.string().trim().min(1, "Is required."),
-  })
-  .superRefine((value, ctx) => {
-    const hasGithubId = Boolean(value.GITHUB_CLIENT_ID);
-    const hasGithubSecret = Boolean(value.GITHUB_CLIENT_SECRET);
-
-    if (hasGithubId === hasGithubSecret) {
-      return;
-    }
-
-    if (!hasGithubId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "GITHUB_CLIENT_ID is required when GITHUB_CLIENT_SECRET is configured.",
-        path: ["GITHUB_CLIENT_ID"],
-      });
-    }
-
-    if (!hasGithubSecret) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is configured.",
-        path: ["GITHUB_CLIENT_SECRET"],
-      });
-    }
   });
 
 const aiEnvSchema = z.object({
@@ -148,16 +120,6 @@ export const env = {
   auth: {
     get baseUrl() {
       return getAuthEnv().BETTER_AUTH_URL;
-    },
-    get github() {
-      const authEnv = getAuthEnv();
-
-      return authEnv.GITHUB_CLIENT_ID && authEnv.GITHUB_CLIENT_SECRET
-        ? {
-            clientId: authEnv.GITHUB_CLIENT_ID,
-            clientSecret: authEnv.GITHUB_CLIENT_SECRET,
-          }
-        : null;
     },
     get google() {
       const authEnv = getAuthEnv();

@@ -165,8 +165,8 @@ export async function fetchEvidence(
     ]);
 
   // Filter news to only include articles related to the company symbol
-  const companySpecificNews = newsSearch.news.filter((article: any) =>
-    article.relatedTickers?.includes(resolution.symbol)
+  const companySpecificNews = newsSearch.news.filter((article) =>
+    article.relatedTickers?.includes(resolution.symbol),
   );
 
   const normalizedNews = normalizeNews(resolution.symbol, companySpecificNews);

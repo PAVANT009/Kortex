@@ -25,9 +25,13 @@ function getErrorMessage(error: unknown) {
 export async function GET() {
   try {
     const session = await getSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const recentRuns = await getRecentCompletedRuns(
       8,
-      session?.user.id ?? null,
+      session.user.id,
     );
     return NextResponse.json({ recentRuns });
   } catch (error) {
@@ -44,10 +48,14 @@ export async function POST(request: Request) {
   let runId: string | null = null;
 
   try {
+    const session = await getSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const json = await request.json();
     const payload = researchRequestSchema.parse(json);
-    const session = await getSession();
-    const run = await createResearchRun(payload.company, session?.user.id ?? null);
+    const run = await createResearchRun(payload.company, session.user.id);
 
     runId = run.id;
 

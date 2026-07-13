@@ -32,7 +32,7 @@ const quickLinks = [
     title: "Saved Reports",
   },
   {
-    description: "Track companies worth revisiting once watchlist persistence is added.",
+    description: "Track companies worth revisiting and manage your personal watchlist.",
     href: "/watchlist",
     icon: WalletCards,
     title: "Watchlist",
@@ -65,10 +65,9 @@ export default async function DashboardPage() {
           Welcome back, {firstName}.
         </h2>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-          The authenticated shell is now in place: protected routes, app-wide
-          navigation, a mobile drawer, and private research entrypoints all live
-          under the same SaaS layout. The next build phases will connect
-          user-scoped metrics, saved reports, watchlists, and follow-up chat.
+          Your research workspace is protected behind Google sign-in and keeps
+          company screens, saved reports, watchlist entries, and account
+          settings under one shared application shell.
         </p>
 
         <div className="mt-6">

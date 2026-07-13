@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -135,8 +134,6 @@ export function StockChart({ symbol, period = "1y", className }: StockChartProps
   const isPositive = priceChange >= 0;
 
   const chartColor = isPositive ? "#10b981" : "#ef4444";
-  const areaColor = isPositive ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)";
-
   const minPrice = Math.min(...data.map((d: StockDataPoint) => d.low));
   const maxPrice = Math.max(...data.map((d: StockDataPoint) => d.high));
   const priceRange = maxPrice - minPrice;
@@ -169,7 +166,7 @@ export function StockChart({ symbol, period = "1y", className }: StockChartProps
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {symbol} · {selectedPeriod.toUpperCase()}
+            {symbol} | {selectedPeriod.toUpperCase()}
           </p>
         </div>
 

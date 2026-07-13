@@ -1,21 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark, ExternalLink, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Bookmark,
+  ExternalLink,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type SavedReport = {
   id: string;
-  reportId: string;
   runId: string;
   companyName: string;
   ticker: string;
   decision: "INVEST" | "PASS";
   savedAt: string;
-  createdAt: string;
+  createdAt: string | null;
 };
 
 export default function SavedPage() {
@@ -30,29 +35,31 @@ export default function SavedPage() {
         if (!response.ok) throw new Error("Failed to fetch saved reports");
         const data = await response.json();
         setSavedReports(data.savedReports || []);
-      } catch (err) {
+      } catch {
         setError("Failed to load saved reports");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchSavedReports();
+    void fetchSavedReports();
   }, []);
 
   async function handleUnsave(id: string) {
     try {
       const response = await fetch(`/api/saved/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Failed to unsave");
-      setSavedReports((prev) => prev.filter((report) => report.id !== id));
-    } catch (err) {
+      setSavedReports((previous) =>
+        previous.filter((report) => report.id !== id),
+      );
+    } catch {
       setError("Failed to unsave report");
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <p className="text-muted-foreground">Loading saved reports...</p>
       </div>
     );
@@ -60,7 +67,7 @@ export default function SavedPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -68,10 +75,10 @@ export default function SavedPage() {
 
   if (savedReports.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <Bookmark className="size-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No saved reports yet</h3>
-        <p className="text-muted-foreground mb-4">
+      <div className="flex h-64 flex-col items-center justify-center text-center">
+        <Bookmark className="mb-4 size-12 text-muted-foreground" />
+        <h3 className="mb-2 text-lg font-semibold">No saved reports yet</h3>
+        <p className="mb-4 text-muted-foreground">
           Save research reports to view them here later
         </p>
         <Button asChild>
@@ -85,9 +92,12 @@ export default function SavedPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Saved Reports</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Saved Reports
+          </h1>
           <p className="text-muted-foreground">
-            {savedReports.length} {savedReports.length === 1 ? "report" : "reports"} saved
+            {savedReports.length}{" "}
+            {savedReports.length === 1 ? "report" : "reports"} saved
           </p>
         </div>
       </div>
@@ -100,17 +110,19 @@ export default function SavedPage() {
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="mb-2 flex items-center gap-3">
                   <Link
-                    className="text-lg font-semibold hover:text-primary transition-colors"
+                    className="text-lg font-semibold transition-colors hover:text-primary"
                     href={`/research/${report.runId}`}
                   >
                     {report.companyName}
                   </Link>
-                  <span className="text-sm text-muted-foreground">({report.ticker})</span>
+                  <span className="text-sm text-muted-foreground">
+                    ({report.ticker})
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 mb-3">
+                <div className="mb-3 flex items-center gap-2">
                   <span
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
@@ -129,27 +141,30 @@ export default function SavedPage() {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>Saved {new Date(report.savedAt).toLocaleDateString()}</span>
-                  <span>•</span>
-                  <span>Created {new Date(report.createdAt).toLocaleDateString()}</span>
+                  <span>
+                    Saved {new Date(report.savedAt).toLocaleDateString()}
+                  </span>
+                  <span>|</span>
+                  <span>
+                    Created{" "}
+                    {report.createdAt
+                      ? new Date(report.createdAt).toLocaleDateString()
+                      : "Unknown"}
+                  </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                >
+                <Button asChild size="sm" variant="outline">
                   <Link href={`/research/${report.runId}`}>
-                    <ExternalLink className="size-4 mr-2" />
+                    <ExternalLink className="mr-2 size-4" />
                     View
                   </Link>
                 </Button>
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  onClick={() => handleUnsave(report.id)}
+                  onClick={() => void handleUnsave(report.id)}
                 >
                   <Trash2 className="size-4 text-destructive" />
                 </Button>

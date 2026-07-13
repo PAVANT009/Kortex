@@ -113,7 +113,7 @@ export async function saveResearchReport(params: {
   return { reportId };
 }
 
-export async function getResearchResultByRunId(runId: string) {
+export async function getResearchResultByRunId(runId: string, userId: string) {
   const runRows = await db
     .select({
       reportJson: researchReport.reportJson,
@@ -123,7 +123,7 @@ export async function getResearchResultByRunId(runId: string) {
     })
     .from(researchRun)
     .leftJoin(researchReport, eq(researchReport.runId, researchRun.id))
-    .where(eq(researchRun.id, runId))
+    .where(and(eq(researchRun.id, runId), eq(researchRun.userId, userId)))
     .limit(1);
 
   const row = runRows[0];

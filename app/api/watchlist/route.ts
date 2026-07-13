@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/get-session";
-import { db } from "@/db";
-import { watchlist } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { ZodError } from "zod";
+
+import { db } from "@/db";
+import { watchlist } from "@/db/schema";
+import { getSession } from "@/lib/get-session";
+import { watchlistRequestSchema } from "@/modules/research/schemas/input";
 
 export async function GET(request: NextRequest) {
+  void request;
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,36 +37,71 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { companyName, ticker, notes } = body;
+    const payload = watchlistRequestSchema.parse(body);
 
-    if (!companyName || !ticker) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    // Check if already in watchlist
-    const existing = await db
+    const existingRows = await db
       .select()
       .from(watchlist)
-      .where(and(eq(watchlist.userId, session.user.id), eq(watchlist.ticker, ticker)))
+      .where(
+        and(
+          eq(watchlist.userId, session.user.id),
+          eq(watchlist.ticker, payload.ticker),
+        ),
+      )
       .limit(1);
 
-    if (existing.length > 0) {
-      return NextResponse.json({ error: "Company already in watchlist" }, { status: 409 });
+    const existing = existingRows[0];
+    if (existing) {
+      return NextResponse.json({ watchlistItem: existing });
     }
 
-    const added = await db
+    const inserted = await db
       .insert(watchlist)
       .values({
         id: nanoid(),
         userId: session.user.id,
-        companyName,
-        ticker,
-        notes: notes || null,
+        companyName: payload.companyName,
+        ticker: payload.ticker,
+        notes: payload.notes,
+      })
+      .onConflictDoNothing({
+        target: [watchlist.userId, watchlist.ticker],
       })
       .returning();
 
-    return NextResponse.json({ watchlistItem: added[0] }, { status: 201 });
+    const watchlistItem = inserted[0];
+    if (watchlistItem) {
+      return NextResponse.json({ watchlistItem }, { status: 201 });
+    }
+
+    const duplicateRows = await db
+      .select()
+      .from(watchlist)
+      .where(
+        and(
+          eq(watchlist.userId, session.user.id),
+          eq(watchlist.ticker, payload.ticker),
+        ),
+      )
+      .limit(1);
+
+    const duplicate = duplicateRows[0];
+    if (duplicate) {
+      return NextResponse.json({ watchlistItem: duplicate });
+    }
+
+    return NextResponse.json(
+      { error: "Failed to add to watchlist" },
+      { status: 500 },
+    );
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: "Please enter a valid company and ticker." },
+        { status: 400 },
+      );
+    }
+
     console.error("Error adding to watchlist:", error);
     return NextResponse.json({ error: "Failed to add to watchlist" }, { status: 500 });
   }

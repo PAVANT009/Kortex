@@ -9,11 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Edit,
   FileText,
   Folder,
   LayoutDashboard,
-  LayoutTemplate,
   Menu,
   Orbit,
   Search,
@@ -366,10 +364,6 @@ export function AppShell({ children, user }: AppShellProps) {
     pathname === "/research" || pathname.startsWith("/research/");
 
   useEffect(() => {
-    setIsMobileOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     let cancelled = false;
 
     async function loadRecentRuns() {
@@ -457,7 +451,11 @@ export function AppShell({ children, user }: AppShellProps) {
             />
             <aside className="relative flex h-full w-[88vw] max-w-sm flex-col border-r border-border/70 bg-background p-4 shadow-2xl">
               <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-4">
-                <Link className="flex items-center gap-3" href="/dashboard">
+                <Link
+                  className="flex items-center gap-3"
+                  href="/dashboard"
+                  onClick={() => setIsMobileOpen(false)}
+                >
                   <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
                     <Orbit className="size-5" />
                   </div>
@@ -496,6 +494,7 @@ export function AppShell({ children, user }: AppShellProps) {
                           : "text-muted-foreground hover:border-border/70 hover:bg-background/80 hover:text-foreground",
                       )}
                       href={item.href}
+                      onClick={() => setIsMobileOpen(false)}
                     >
                       <div
                         className={cn(

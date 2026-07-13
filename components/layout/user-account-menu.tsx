@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -40,7 +41,7 @@ function UserAvatar({
 }) {
   if (image) {
     return (
-      <img
+      <Image
         alt={name}
         className={cn(
           "size-10 rounded-2xl border border-border/70 object-cover",
@@ -48,6 +49,9 @@ function UserAvatar({
         )}
         referrerPolicy="no-referrer"
         src={image}
+        unoptimized
+        width={40}
+        height={40}
       />
     );
   }

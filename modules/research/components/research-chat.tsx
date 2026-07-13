@@ -34,6 +34,22 @@ const PRESET_PROMPTS = [
   "What would change your mind on the invest/pass verdict?",
 ];
 
+function buildSeedMessages(report: InvestmentReport): ChatMessage[] {
+  return [
+    {
+      content: `We are screening ${report.companyName} (${report.ticker}). Draft key due diligence questions based on your assessment of the evidence documents.`,
+      id: crypto.randomUUID(),
+      role: "user",
+    },
+    {
+      content: buildDdQuestionsResponse(report),
+      id: crypto.randomUUID(),
+      role: "agent",
+      stepsCompleted: 12,
+    },
+  ];
+}
+
 function buildDdQuestionsResponse(report: InvestmentReport) {
   const questions = report.followUpQuestions;
   const lines = questions.map((question, index) => `${index + 1}. ${question}`);
@@ -92,7 +108,7 @@ function buildAgentResponse(prompt: string, report: InvestmentReport) {
     normalized.includes("hi") ||
     normalized.includes("hey")
   ) {
-    return `Hello! I'm here to help you analyze the research on ${report.companyName}. You can ask me about:\n\n• Key due diligence questions\n• Risks from the evidence\n• The invest/pass verdict and rationale\n\nWhat would you like to know?`;
+    return `Hello! I'm here to help you analyze the research on ${report.companyName}. You can ask me about:\n\n- Key due diligence questions\n- Risks from the evidence\n- The invest/pass verdict and rationale\n\nWhat would you like to know?`;
   }
 
   if (
@@ -113,8 +129,7 @@ function buildAgentResponse(prompt: string, report: InvestmentReport) {
     return `**Valuation Assessment**\n\n${report.financialAnalysis.text}\n\nThe current valuation should be evaluated relative to peers and expected growth rates. Consider the financial metrics and market positioning outlined in the analysis.`;
   }
 
-  // Default response for other questions
-  return `I can help you with questions about ${report.companyName}. Here are some things I can do:\n\n• Draft due diligence questions\n• Summarize risks\n• Explain the verdict\n• Discuss valuation\n\nTry asking about one of these topics, or use the preset prompts above.`;
+  return `I can help you with questions about ${report.companyName}. Here are some things I can do:\n\n- Draft due diligence questions\n- Summarize risks\n- Explain the verdict\n- Discuss valuation\n\nTry asking about one of these topics, or use the preset prompts above.`;
 }
 
 function renderMarkdownish(text: string) {
@@ -158,36 +173,12 @@ export function ResearchChat({
   variant = "card",
 }: ResearchChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    report ? buildSeedMessages(report) : [],
+  );
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [seededReportId, setSeededReportId] = useState<string | null>(null);
   const isPane = variant === "pane";
-
-  useEffect(() => {
-    if (!report) {
-      setSeededReportId(null);
-      return;
-    }
-
-    const reportKey = `${report.companyName}-${report.generatedAt}`;
-    if (seededReportId === reportKey) return;
-
-    setMessages([
-      {
-        content: `We are screening ${report.companyName} (${report.ticker}). Draft key due diligence questions based on your assessment of the evidence documents.`,
-        id: crypto.randomUUID(),
-        role: "user",
-      },
-      {
-        content: buildDdQuestionsResponse(report),
-        id: crypto.randomUUID(),
-        role: "agent",
-        stepsCompleted: 12,
-      },
-    ]);
-    setSeededReportId(reportKey);
-  }, [report, seededReportId]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -250,13 +241,13 @@ export function ResearchChat({
           <p className="text-sm font-medium text-foreground">Matrix Agent</p>
           {companyName ? (
             <span className="text-xs text-muted-foreground">
-              · {companyName}
+              | {companyName}
             </span>
           ) : null}
         </div>
         {report ? (
           <span className="text-[10px] text-muted-foreground">
-            {report.generation.mode === "llm" ? "Gemini" : "Heuristic"} ·{" "}
+            {report.generation.mode === "llm" ? "Gemini" : "Heuristic"} |{" "}
             {report.decision.verdict}
           </span>
         ) : null}

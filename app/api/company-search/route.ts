@@ -1,28 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getSession } from "@/lib/get-session";
 import { yahooFinance } from "@/modules/research/server/providers/yahoo";
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get("q");
+type SearchQuote = {
+  isYahooFinance?: boolean;
+  symbol?: string;
+  shortname?: string;
+  longname?: string;
+  quoteType?: string;
+};
 
-  if (!query || query.length < 2) {
+export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+  const query = searchParams.get("q")?.trim() ?? "";
+
+  if (query.length < 2) {
     return NextResponse.json({ results: [] });
   }
 
   try {
     const searchResults = await yahooFinance.search(query);
-    console.log("Yahoo Finance search results:", JSON.stringify(searchResults, null, 2));
-    
-    const results = searchResults.quotes
-      .filter((quote: any) => quote.isYahooFinance)
+    const quotes = searchResults.quotes as SearchQuote[];
+
+    const results = quotes
+      .filter(
+        (quote): quote is SearchQuote & { symbol: string } =>
+          Boolean(
+            quote.isYahooFinance &&
+              quote.symbol &&
+              (quote.shortname || quote.longname),
+          ),
+      )
       .slice(0, 8)
-      .map((quote: any) => ({
+      .map((quote) => ({
         symbol: quote.symbol,
         name: quote.shortname || quote.longname,
         type: quote.quoteType,
       }));
 
-    console.log("Filtered results:", results);
     return NextResponse.json({ results });
   } catch (error) {
     console.error("Error searching companies:", error);

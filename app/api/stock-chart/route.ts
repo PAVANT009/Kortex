@@ -1,10 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getSession } from "@/lib/get-session";
 import { yahooFinance } from "@/modules/research/server/providers/yahoo";
 
+type ChartQuote = {
+  date: Date;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: number | null;
+  adjclose: number | null;
+};
+
+const VALID_PERIODS = new Set([
+  "1d",
+  "5d",
+  "1mo",
+  "3mo",
+  "6mo",
+  "1y",
+  "2y",
+  "5y",
+  "10y",
+  "ytd",
+  "max",
+]);
+
 export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
-  const symbol = searchParams.get("symbol");
-  const period = searchParams.get("period") || "1y"; // 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+  const symbol = searchParams.get("symbol")?.trim().toUpperCase() ?? "";
+  const requestedPeriod = searchParams.get("period")?.trim() ?? "1y";
+  const period = VALID_PERIODS.has(requestedPeriod) ? requestedPeriod : "1y";
 
   if (!symbol) {
     return NextResponse.json({ error: "Symbol is required" }, { status: 400 });
@@ -59,17 +91,33 @@ export async function GET(request: NextRequest) {
       period2,
       interval: "1d",
     });
+    const quotes = result.quotes as ChartQuote[];
 
-    const chartData = result.quotes
-      .filter((quote: any) => quote.close !== null)
-      .map((quote: any) => ({
+    const chartData = quotes
+      .filter(
+        (
+          quote,
+        ): quote is ChartQuote & {
+          open: number;
+          high: number;
+          low: number;
+          close: number;
+          volume: number;
+        } =>
+          quote.open !== null &&
+          quote.high !== null &&
+          quote.low !== null &&
+          quote.close !== null &&
+          quote.volume !== null,
+      )
+      .map((quote) => ({
         date: quote.date,
         open: quote.open,
         high: quote.high,
         low: quote.low,
         close: quote.close,
         volume: quote.volume,
-        adjclose: quote.adjclose,
+        adjclose: quote.adjclose ?? quote.close,
       }));
 
     const meta = {
