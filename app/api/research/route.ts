@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ZodError } from "zod";
 
 import { getSession } from "@/lib/get-session";
 import { researchRequestSchema } from "@/modules/research/schemas/input";
@@ -54,7 +53,18 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
-    const payload = researchRequestSchema.parse(json);
+    const parsedPayload = researchRequestSchema.safeParse(json);
+    if (!parsedPayload.success) {
+      return NextResponse.json(
+        {
+          error: "Please enter a valid company name.",
+          issues: parsedPayload.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const payload = parsedPayload.data;
     const run = await createResearchRun(payload.company, session.user.id);
 
     runId = run.id;
@@ -68,16 +78,6 @@ export async function POST(request: Request) {
   } catch (error) {
     if (runId) {
       await failResearchRun(runId, getErrorMessage(error));
-    }
-
-    if (error instanceof ZodError) {
-      return NextResponse.json(
-        {
-          error: "Please enter a valid company name.",
-          issues: error.flatten(),
-        },
-        { status: 400 },
-      );
     }
 
     return NextResponse.json(
